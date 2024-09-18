@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Login</title>
+    <script>
+        async function login(event) {
+            event.preventDefault(); // Prevent default form submission
+
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            const response = await fetch('http://localhost:8080/auth/token', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    username: username,
+                    password: password
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.code === 1000 && data.result.authenticated) {
+                // Successful login, redirect to UserPage
+                window.location.href = '/userPage'; // Redirect to user page (adjust as needed)
+            } else {
+                // Display error message
+                document.getElementById('error-message').innerText = 'Login failed. Please try again.';
+            }
+        }
+    </script>
+</head>
+<body>
+<h1>Login</h1>
+<form onsubmit="login(event)">
+    <div>
+        <label for="username">Username:</label>
+        <input type="text" id="username" name="username" required>
+    </div>
+    <div>
+        <label for="password">Password:</label>
+        <input type="password" id="password" name="password" required>
+    </div>
+    <div>
+        <button type="submit">Login</button>
+    </div>
+    <div id="error-message" style="color: red;"></div> <!-- Error message container -->
+</form>
+</body>
+</html>
