@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>Search</title>
+</head>
+
+<body>
+  <div class='container'>
+    <div class='search-page'>
+      <div class='search-page-main'>
+        <h2 class='mt-2 mb-4'>Tìm kiếm Blog</h2>
+        <form id="searchForm" method='get' style='width: 380px' onsubmit="return false;">
+          <div class='form-group'>
+            <label>Nhập blog muốn tìm kiếm...</label>
+            <input
+                    type='text'
+                    id="keyword"
+                    name='keyword'
+                    class='form-control input-custom'
+            />
+          </div>
+          <button
+                  type='submit'
+                  class='btn btn-primary search-course-btn'
+
+          >Tìm kiếm</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+<!--  js to show the search result-->
+  <script>
+    document.getElementById('searchForm').addEventListener('submit', function(event) {
+      event.preventDefault();
+      const keyword = document.getElementById('keyword').value.trim();
+      if (keyword) {
+        window.location.href = `/blogDetails/${encodeURIComponent(keyword)}`;
+      } else {
+        alert('Vui lòng nhập từ khóa tìm kiếm!');
+      }
+    });
+  </script>
+
+  <script>
+    // Hàm giải mã token JWT
+    function parseJwt(token) {
+      try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        return JSON.parse(jsonPayload);
+      } catch (e) {
+        return null;
+      }
+    }
+
+    // Kiểm tra quyền của token và hiển thị các nút tương ứng
+    function checkTokenScopes() {
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token'); // Lấy token từ session hoặc local
+      console.log("token: ", token);
+      if (token) {
+        const decodedToken = parseJwt(token);
+        console.log("decodedToken: ", decodedToken);
+        if (decodedToken && decodedToken.scope) {
+          const scopes = decodedToken.scope.split(' ');
+          console.log("scopes: ", scopes);
+          if(scopes.includes('ROLE_ADMIN')){
+            document.getElementById('myUser').style.display = 'block';
+          }
+          // Hiển thị nút "Tạo blog" nếu user có vai trò USER hoặc ADMIN
+          if (scopes.includes('ROLE_ADMIN') || scopes.includes('ROLE_USER')) {
+            document.getElementById('createBlogButton').style.display = 'block';
+            document.getElementById('myInfoButton').style.display = 'block';
+            document.getElementById('myBlogButton').style.display = 'block'; // Nếu cần hiển thị thêm nút khác
+          }
+          // Ẩn nút đăng nhập
+          document.getElementById('loginButton').style.display = 'none';
+        }
+      }
+    }
+
+    // Kiểm tra trạng thái khi tải trang
+    window.onload = function() {
+      checkTokenScopes();
+    };
+  </script>
+
+</body>

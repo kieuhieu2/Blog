@@ -1,0 +1,59 @@
+.navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1;
+}
+
+.row {
+    margin-top: 66px;
+}
+
+.container {
+    margin-top: 66px;
+}
+
+.login-form-part {
+    display: flex;
+    justify-content: center;
+}
+
+.login-btn {
+    margin: 0 auto;
+    margin-left: 50%;
+    transform: translateX(calc(-50%));
+}
+
+.create-course-btn,
+.edit-course-btn,
+.search-course-btn,
+.login-btn{
+    margin-left: calc(380px / 2);
+    transform: translateX(calc(-50%));
+}
+
+.input-custom {
+    width: 380px;
+}
+
+.search-page,
+.create-page,
+.login-page,
+.edit-page {
+    display: flex;
+    justify-content: center;
+}
+
+.blog-format{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    text-align: center;
+}
+
+.create-user-btn {
+    margin-top: 60px;
+}
+

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Home</title>
+    <link rel="stylesheet" href="css/app.css" type="text/css">
+</head>
+<body>
+    <h1 style="text-align: center">Đây là bài viết cá nhân</h1>
+    <div id="blogList" class="blog-format"></div>
+
+    <script>
+        async function fetchBlogs() {
+            try {
+                const response = await fetch('http://localhost:8080/posts');
+                const apiResponse = await response.json();
+
+                console.log('API Response:', apiResponse);
+
+                const blogs = apiResponse.result;
+                const blogList = document.getElementById('blogList');
+
+                blogList.innerHTML = '';
+
+                blogs.forEach(blog => {
+                    const blogItem = document.createElement('div');
+                    blogItem.innerHTML = `
+                        <li style="
+                        list-style-type: none;
+                        padding-left: 100px;
+                        ">
+                            <a href="blogDetails/${encodeURIComponent(blog.title)}">${blog.title}</a>
+                        </li>
+                        <p style="
+                        margin-left: 100px;
+                        padding-right: 100px;
+                        ">${blog.description ? blog.description : "No description provided"}</p>
+                        <p style="padding-left: 100px">Updated at: ${new Date(blog.updatedAt).toLocaleString()}</p>
+                    `;
+                    blogList.appendChild(blogItem);
+                });
+            } catch (error) {
+                console.error('Error fetching blogs:', error);
+                document.getElementById('blogList').innerHTML = '<p>Error loading blogs. Please try again later.</p>';
+            }
+        }
+        window.onload = fetchBlogs;
+    </script>
+
+    <script>
+        function parseJwt(token) {
+            try {
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+                return JSON.parse(jsonPayload);
+            } catch (e) {
+                return null;
+            }
+        }
+
+        // Kiểm tra quyền của token và hiển thị các nút tương ứng
+        function checkTokenScopes() {
+            const token = sessionStorage.getItem('token') || localStorage.getItem('token'); // Lấy token từ session hoặc local
+            console.log("token: ", token);
+            if (token) {
+                const decodedToken = parseJwt(token);
+                console.log("decodedToken: ", decodedToken);
+                if (decodedToken && decodedToken.scope) {
+                    const scopes = decodedToken.scope.split(' ');
+                    console.log("scopes: ", scopes);
+                    if(scopes.includes('ROLE_ADMIN')){
+                        document.getElementById('myUser').style.display = 'block';
+                    }
+                    if (scopes.includes('ROLE_ADMIN') || scopes.includes('ROLE_USER')) {
+                        document.getElementById('createBlogButton').style.display = 'block';
+                        document.getElementById('myInfoButton').style.display = 'block';
+                        document.getElementById('myBlogButton').style.display = 'block';
+                    }
+                    // Ẩn nút đăng nhập
+                    // document.getElementById('loginButton').style.display = 'none';
+                }
+            }
+        }
+
+        window.onload = function() {
+            checkTokenScopes();
+            fetchBlogs();
+        };
+    </script>
+</body>
+</html>

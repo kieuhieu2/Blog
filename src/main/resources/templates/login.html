@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Login</title>
+</head>
+<body>
+    <div class="container">
+        <div class="login-page">
+            <div class="login-page-main">
+                <h2 class='mt-2 mb-4'>Đăng nhập để truy cập vào hệ thống</h2>
+                <form onsubmit="login(event)">
+                    <div>
+                        <label for="username">Username:</label>
+                        <input type="text" id="username" name="username" required>
+                    </div>
+                    <div>
+                        <label for="password">Password:</label>
+                        <input type="password" id="password" name="password" required>
+                    </div>
+                    <div>
+                        <button
+                                type="submit"
+                                class="btn btn-primary login-btn"
+                        >Login</button>
+                    </div>
+                    <div id="error-message" style="color: red;"></div> <!-- Error message container -->
+                </form>
+            </div>
+        </div>
+    </div>
+</body>
+    <script>
+        async function login(event) {
+            event.preventDefault(); // Ngăn chặn submit form mặc định
+
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            // Gọi API để nhận token
+            const response = await fetch('http://localhost:8080/auth/token', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    username: username,
+                    password: password
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.code === 1000 && data.result.authenticated) {
+                // Lưu token vào sessionStorage và localStorage
+                sessionStorage.setItem('token', data.result.token);
+                localStorage.setItem('token', data.result.token);
+
+                // Kiểm tra quyền của token và hiển thị các nút tương ứng
+                checkTokenScopes();
+
+                // Chuyển hướng về trang chủ sau khi đăng nhập thành công
+                window.location.href = '/';
+            } else {
+                document.getElementById('error-message').innerText = 'Login failed. Please try again.';
+            }
+        }
+
+        // Hàm giải mã token JWT
+        function parseJwt(token) {
+            try {
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+                return JSON.parse(jsonPayload);
+            } catch (e) {
+                return null;
+            }
+        }
+
+        // Kiểm tra quyền của token và hiển thị các nút tương ứng
+        function checkTokenScopes() {
+            const token = sessionStorage.getItem('token') || localStorage.getItem('token'); // Lấy token từ session hoặc local
+            console.log("token: ", token);
+            if (token) {
+                const decodedToken = parseJwt(token);
+                console.log("decodedToken: ", decodedToken);
+                if (decodedToken && decodedToken.scopes) {
+                    const scopes = decodedToken.scopes;
+                    console.log("scopes: ", scopes);
+                    // Hiển thị nút "Tạo blog" nếu user có vai trò USER hoặc ADMIN
+                    if (scopes.includes('ROLE_ADMIN') || scopes.includes('ROLE_USER')) {
+                        document.getElementById('createBlogButton').style.display = 'block';
+                        document.getElementById('myBlogButton').style.display = 'block'; // Nếu cần hiển thị thêm nút khác
+                    }
+                    // Ẩn nút đăng nhập
+                    document.getElementById('loginButton').style.display = 'none';
+                }
+            }
+        }
+
+        // Kiểm tra trạng thái khi tải trang
+        window.onload = function() {
+            checkTokenScopes();
+        };
+    </script>
+
+    <script>
+        // Hàm giải mã token JWT
+        function parseJwt(token) {
+            try {
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+                return JSON.parse(jsonPayload);
+            } catch (e) {
+                return null;
+            }
+        }
+
+        // Kiểm tra quyền của token và hiển thị các nút tương ứng
+        function checkTokenScopes() {
+            const token = sessionStorage.getItem('token') || localStorage.getItem('token'); // Lấy token từ session hoặc local
+            console.log("token: ", token);
+            if (token) {
+                const decodedToken = parseJwt(token);
+                console.log("decodedToken: ", decodedToken);
+                if (decodedToken && decodedToken.scope) {
+                    const scopes = decodedToken.scope.split(' ');
+                    console.log("scopes: ", scopes);
+                    // Hiển thị nút "Tạo blog" nếu user có vai trò USER hoặc ADMIN
+                    if (scopes.includes('ROLE_ADMIN') || scopes.includes('ROLE_USER')) {
+                        document.getElementById('createBlogButton').style.display = 'block';
+                        document.getElementById('myBlogButton').style.display = 'block'; // Nếu cần hiển thị thêm nút khác
+                    }
+                    // Ẩn nút đăng nhập
+                    // document.getElementById('loginButton').style.display = 'none';
+                }
+            }
+        }
+
+        // Kiểm tra trạng thái khi tải trang
+        window.onload = function() {
+            checkTokenScopes();
+        };
+    </script>
+
+</html>

@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Create blog</title>
+</head>
+<body>
+<!--  // Form create blog-->
+<div class="container">
+  <div class="create-blog-page">
+    <div class="create-blog-page-main" style=
+            "display: flex;
+              flex-wrap: wrap;
+      ">
+      <h2 class='mt-2 mb-4'>Tạo bài blog mới</h2>
+      <form id="createBlogForm" enctype="multipart/form-data">
+        <div>
+          <label for="title">Tiêu đề</label>
+          <input type="text" id="title" name="title" required style="
+              width: 1000px;
+              margin-left: 23px;
+              margin-bottom: 10px;
+            ">
+        </div>
+        <div>
+          <label for="description">Mô tả</label>
+          <textarea id="description" name="description" required style="
+                  height: 60px;
+                  width: 1000px;
+                  margin-left: 35px;
+            "></textarea>
+        </div>
+        <div>
+          <label for="content">Nội dung</label>
+          <textarea id="content" name="content" required style="
+                    height: 60px;
+                    width: 1000px;
+                    margin-left: 11px;
+            "></textarea>
+        </div>
+        <div>
+          <label for="image">Hình ảnh</label>
+          <input type="file" id="image" name="image" accept="image/*" style="margin-left: 10px" required>
+          <!--            <img id="image" alt="Blog Image" style="display:block; margin-top:10px; width:300px;">-->
+        </div>
+        <div>
+          <button type="submit" class="btn btn-primary create-blog-btn">Tạo blog</button>
+        </div>
+        <div id="error-message" style="color: red;"></div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.getElementById('createBlogForm').addEventListener('submit', async function(event) {
+    event.preventDefault();
+
+    const formData = new FormData(this);
+
+    const token = sessionStorage.getItem('token');
+
+    const response = await fetch('http://localhost:8080/posts', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      body: formData
+    });
+
+    const data = await response.json();
+
+    if (data.code === 1000) {
+      alert('Tạo blog thành công!');
+      window.location.href = '/';
+    } else {
+      document.getElementById('error-message').innerText = data.message;
+    }
+  });
+</script>
+
+<script>
+  // Hàm giải mã token JWT
+  function parseJwt(token) {
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+      return JSON.parse(jsonPayload);
+    } catch (e) {
+      return null;
+    }
+  }
+
+
+  function checkTokenScopes() {
+    const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+    console.log("token: ", token);
+    if (token) {
+      const decodedToken = parseJwt(token);
+      console.log("decodedToken: ", decodedToken);
+      if (decodedToken && decodedToken.scope) {
+        const scopes = decodedToken.scope.split(' ');
+        console.log("scopes: ", scopes);
+
+        if (scopes.includes('ROLE_ADMIN') || scopes.includes('ROLE_USER')) {
+          document.getElementById('createBlogButton').style.display = 'block';
+          document.getElementById('myInfoButton').style.display = 'block';
+          document.getElementById('myBlogButton').style.display = 'block';
+        }
+
+        if(scopes.includes('ROLE_ADMIN')){
+          document.getElementById('myUser').style.display = 'block';
+        }
+
+        document.getElementById('loginButton').style.display = 'none';
+      }
+    }
+  }
+
+
+  window.onload = function() {
+    checkTokenScopes();
+  };
+</script>
+
+<script>
+  // resize input text area
+  document.querySelectorAll('textarea').forEach(textarea => {
+    textarea.addEventListener('input', autoResize, false);
+  });
+
+  function autoResize() {
+    this.style.height = 'auto';
+    this.style.height = (this.scrollHeight) + 'px';
+  }
+
+</script>
+
+<script>
+  document.getElementById('imageInput').addEventListener('change', function(event) {
+    const file = event.target.files[0];
+
+    if (file) {
+      const reader = new FileReader();
+
+      reader.onload = function(e) {
+        document.getElementById('image').src = e.target.result;
+      };
+
+      reader.readAsDataURL(file);
+    }
+  });
+</script>
+
+<script>
+  //convert title to slug
+  document.getElementById('title').addEventListener('input', function(event) {
+    const title = event.target.value;
+    const slug = title.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
+    document.getElementById('slug').value = slug;
+  });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blog Details</title>
+    <link rel="stylesheet" href="css/app.css" type="text/css">
+</head>
+<body>
+
+<h1 style="
+           text-align: center;
+           ">Chi tiết bài viết </h1>
+<div id="blogDetails" class="blog-format"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.0.4/pako.min.js"></script>
+
+<script>
+    // Fetch and display blog details based on the current URL path
+    async function fetchBlogDetails() {
+        const title = decodeURIComponent(window.location.pathname.split("/").pop());
+        try {
+            const response = await fetch(`http://localhost:8080/posts/${encodeURIComponent(title)}`);
+            const apiResponse = await response.json();
+
+            if (!apiResponse.result || apiResponse.result.length === 0) {
+                console.error('No blog data found');
+                document.getElementById('blogDetails').innerHTML = '<p>No blog details found.</p>';
+                return;
+            }
+
+            const blog = apiResponse.result[apiResponse.result.length - 1];
+            renderBlog(blog);
+        } catch (error) {
+            console.error('Error fetching blog details:', error);
+            document.getElementById('blogDetails').innerHTML = '<p>There was an error fetching the blog details. Please try again later.</p>';
+        }
+    }
+
+    function renderBlog(blog) {
+        const blogDetailsDiv = document.getElementById('blogDetails');
+
+        let imageTag = "<p>Image not available</p>";
+        if (blog.image) {
+            try {
+                const compressedData = Uint8Array.from(atob(blog.image), c => c.charCodeAt(0));
+                const decompressedData = pako.inflate(compressedData);
+                const base64Image = btoa(String.fromCharCode(...decompressedData));
+                imageTag = `<img src="data:image/jpeg;base64,${base64Image}" alt="Blog Image"
+                style="
+                max-width: 100%;
+                height: auto;
+                padding-left: 100px;
+                padding-right: 100px;
+                padding-top: 10px;
+                padding-bottom: 30px;
+                ">`;
+            } catch (imgError) {
+                console.error('Error processing image:', imgError);
+            }
+        }
+
+        blogDetailsDiv.innerHTML = `
+            <h2 style="padding-left: 100px; padding-right: 100px">${blog.title || 'Untitled'}</h2>
+            <p style="padding-left: 100px; padding-right: 100px">${blog.description || 'No description available.'}</p>
+            <div style="padding-left: 100px; padding-right: 100px">${blog.content || 'No content available.'}</div>
+            ${imageTag}
+            <p style="padding-left: 100px; padding-right: 100px"><strong>Created on:</strong> ${new Date(blog.createdAt).toLocaleString()}</p>
+            <p style="padding-left: 100px; padding-right: 100px"><strong>Updated on:</strong> ${new Date(blog.updatedAt).toLocaleString()}</p>
+        `;
+    }
+
+    function parseJwt(token) {
+        try {
+            const base64Url = token.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+            return JSON.parse(jsonPayload);
+        } catch (error) {
+            console.error("Error parsing token:", error);
+            return null;
+        }
+    }
+
+    function checkTokenScopes() {
+        const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+        if (!token) return;
+
+        const decodedToken = parseJwt(token);
+        if (!decodedToken || !decodedToken.scope) return;
+
+        const scopes = decodedToken.scope.split(' ');
+        const elementsToDisplay = [];
+
+        if (scopes.includes('ROLE_ADMIN') || scopes.includes('ROLE_USER')) {
+            elementsToDisplay.push('createBlogButton', 'myInfoButton', 'myBlogButton');
+        }
+        if (scopes.includes('ROLE_ADMIN')) {
+            elementsToDisplay.push('myUser');
+        }
+        elementsToDisplay.forEach(id => document.getElementById(id).style.display = 'block');
+
+        document.getElementById('loginButton').style.display = 'none';
+    }
+    
+    window.onload = () => {
+        fetchBlogDetails();
+        checkTokenScopes();
+    };
+</script>
+
+</body>
+</html>

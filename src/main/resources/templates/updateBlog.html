@@ -1,0 +1,250 @@
+<!--create update blog form-->
+
+<div class="container">
+    <div class="create-blog-page">
+        <div class="create-blog-page-main" style=
+                "display: flex;
+              flex-wrap: wrap;
+      ">
+            <h2 class='mt-2 mb-4'>Cập nhập bài blog mới</h2>
+            <form id="updateBlogForm" enctype="multipart/form-data">
+                <div>
+                    <label for="title">Tiêu đề</label>
+                    <input id="title" name="title" required style="
+              width: 1000px;
+              margin-left: 23px;
+              margin-bottom: 10px;
+            ">
+                </div>
+                <div>
+                    <label for="description">Mô tả</label>
+                    <textarea id="description" name="description" required style="
+                  height: 60px;
+                  width: 1000px;
+                  margin-left: 35px;
+            "></textarea>
+                </div>
+                <div>
+                    <label for="content">Nội dung</label>
+                    <textarea id="content" name="content" required style="
+                    height: 60px;
+                    width: 1000px;
+                    margin-left: 11px;
+            "></textarea>
+                </div>
+                <div>
+                    <label for="imageInput">Hình ảnh</label>
+                    <input type="file" id="imageInput" name="image" accept="image/*" style="margin-left: 10px" required>
+                    <img id="image" alt="Blog Image" style="display:block; margin-top:10px; width:300px;">
+                </div>
+                <div>
+                    <button type="submit" class="btn btn-primary create-blog-btn" id="updateBtn" style="margin-bottom: 50px">Cập nhập</button>
+                    <button type="submit" class="btn btn-primary create-blog-btn" id="deleteBtn" style="margin-bottom: 50px">Xóa </button>
+                </div>
+                <div id="error-message" style="color: red;"></div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('imageInput').addEventListener('change', function(event) {
+        const file = event.target.files[0];
+
+        if (file) {
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+                document.getElementById('image').src = e.target.result;
+            };
+
+            reader.readAsDataURL(file);
+        }
+    });
+
+    async function fetchBlogDetails() {
+        // const title = window.location.pathname.split("/").pop();
+        const title = decodeURIComponent(window.location.pathname.split("/").pop());
+        try {
+            const response = await fetch(`http://localhost:8080/posts/${encodeURIComponent(title)}`);
+            const apiResponse = await response.json();
+
+            console.log('API Response:', apiResponse);
+
+            // const blog = apiResponse.result[0];
+            const blog = apiResponse.result[apiResponse.result.length - 1];
+
+            if (blog) {
+                console.log('Blog Title:', blog.title);
+                document.getElementById('title').value = blog.title || '';
+                document.getElementById('description').value = blog.description || '';
+                document.getElementById('content').value = blog.content || '';
+
+                if (blog.image) {
+                    console.log('Blog Image:', blog.image);
+
+                    const compressedData = Uint8Array.from(atob(blog.image), c => c.charCodeAt(0));
+                    const decompressedData = pako.inflate(compressedData);
+                    const base64Image = btoa(String.fromCharCode(...decompressedData));
+
+                    document.getElementById('image').src = `data:image/jpeg;base64,${base64Image}`;
+                    console.log('Image source set to:', document.getElementById('image').src);
+                } else {
+                    console.warn('No image found for this blog.');
+                }
+            } else {
+                console.error('Blog data is undefined');
+            }
+        } catch (error) {
+            console.error('Error fetching blog details:', error);
+        }
+    }
+
+    function parseJwt(token) {
+        try {
+            const base64Url = token.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(atob(base64).split('').map(function (c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+            return JSON.parse(jsonPayload);
+        } catch (e) {
+            return null;
+        }
+    }
+
+
+    function checkTokenScopes() {
+        const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+        console.log("token: ", token);
+        if (token) {
+            const decodedToken = parseJwt(token);
+            console.log("decodedToken: ", decodedToken);
+            if (decodedToken && decodedToken.scope) {
+                const scopes = decodedToken.scope.split(' ');
+                console.log("scopes: ", scopes);
+
+                if (scopes.includes('ROLE_ADMIN') || scopes.includes('ROLE_USER')) {
+                    document.getElementById('createBlogButton').style.display = 'block';
+                    document.getElementById('myInfoButton').style.display = 'block';
+                    document.getElementById('myBlogButton').style.display = 'block';
+                }
+
+                if (scopes.includes('ROLE_ADMIN')) {
+                    document.getElementById('myUser').style.display = 'block';
+                }
+
+                document.getElementById('loginButton').style.display = 'none';
+            }
+        }
+    }
+
+    // window.onload = function() {
+    //     fetchBlogDetails();
+    //     checkTokenScopes();
+    // };
+    // call funtion
+    fetchBlogDetails();
+    checkTokenScopes();
+
+</script>
+
+<script>
+        document.querySelectorAll('textarea').forEach(textarea => {
+        textarea.addEventListener('input', autoResize, false);
+        textarea.setAttribute('spellcheck', false);
+    });
+
+    function autoResize() {
+        this.style.height = 'auto';
+        this.style.height = (this.scrollHeight) + 'px';
+    }
+</script>
+
+<script>
+    //call api update blog when click updateBtn
+    document.getElementById('updateBtn').addEventListener('click', async function(event) {
+        event.preventDefault();
+
+        const title = document.getElementById('title').value;
+        const description = document.getElementById('description').value;
+        const content = document.getElementById('content').value;
+        const image = document.getElementById('imageInput').files[0];
+
+        if (!title || !description || !content || !image) {
+            document.getElementById('error-message').innerText = 'Vui lòng điền đầy đủ thông tin.';
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('title', title);
+        formData.append('description', description);
+        formData.append('content', content);
+        formData.append('image', image);
+
+        const token = sessionStorage.getItem('token');
+
+        try {
+            const response = await fetch(`http://localhost:8080/posts/${encodeURIComponent(title)}`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+                body: formData
+            });
+
+            const apiResponse = await response.json();
+            console.log('API Response:', apiResponse);
+
+            if(apiResponse.code === 1000){
+                alert('Cập nhập blog thành công!');
+                window.location.href = '/myBlog';
+            } else {
+                document.getElementById('error-message').innerText = apiResponse.message;
+            }
+        } catch (error) {
+            console.error('Error updating blog:', error);
+            document.getElementById('error-message').innerText = 'Có lỗi xảy ra.';
+        }
+    });
+</script>
+
+<script>
+    //call api delete blog when click deleteBtn
+    document.getElementById('deleteBtn').addEventListener('click', async function(event) {
+        event.preventDefault();
+
+        const title = document.getElementById('title').value;
+
+        if (!title) {
+            document.getElementById('error-message').innerText = 'Vui lòng điền đầy đủ thông tin.';
+            return;
+        }
+
+        const token = sessionStorage.getItem('token');
+
+        try {
+            const response = await fetch(`http://localhost:8080/posts/${encodeURIComponent(title)}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            const apiResponse = await response.json();
+            console.log('API Response:', apiResponse);
+
+            if(apiResponse.code === 1000){
+                alert('Xóa blog thành công!');
+                window.location.href = '/myBlog';
+            } else {
+                document.getElementById('error-message').innerText = apiResponse.message;
+            }
+        } catch (error) {
+            console.error('Error deleting blog:', error);
+            document.getElementById('error-message').innerText = 'Có lỗi xảy ra.';
+        }
+    });
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.0.4/pako.min.js"></script>

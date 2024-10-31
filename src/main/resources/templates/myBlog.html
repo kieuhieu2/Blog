@@ -1,0 +1,114 @@
+
+  <h1 style="padding-left: 100px">Đây là Blog của tôi</h1>
+
+  <div id="blogList" class="blog-format" style="padding-left: 100px; padding-right: 100px; list-style-type: none"></div>
+
+  <script>
+    async function fetchBlogs() {
+      try {
+        const response = await fetch('http://localhost:8080/posts/getMyBlog', {
+          method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+
+        const blogs = await response.json();
+        console.log('API Response:', blogs);
+        const blogList = document.getElementById('blogList');
+
+        blogList.innerHTML = '';
+
+        blogs.forEach(blog => {
+          const blogItem = document.createElement('div');
+          const title = encodeURIComponent(blog.title);
+
+          blogItem.innerHTML = `
+                        <li>
+                            <a href="/myBlog/updateBlog/${title}" id="titleBtn"><h2>${blog.title}</h2></a>
+                        </li>
+                        <p>${blog.description ? blog.description : "No description provided"}</p>
+                        <p>Updated at: ${new Date(blog.updatedAt).toLocaleString()}</p>
+                    `;
+          blogList.appendChild(blogItem);
+        });
+      } catch (error) {
+        console.error('Error fetching blogs:', error);
+        document.getElementById('blogList').innerHTML = '<p>Error loading blogs. Please try login.</p>';
+      }
+    }
+    window.onload = fetchBlogs;
+  </script>
+
+  <script>
+    function parseJwt(token) {
+      try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        return JSON.parse(jsonPayload);
+      } catch (e) {
+        return null;
+      }
+    }
+
+
+    function checkTokenScopes() {
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+      console.log("token: ", token);
+      if (token) {
+        const decodedToken = parseJwt(token);
+        console.log("decodedToken: ", decodedToken);
+        if (decodedToken && decodedToken.scope) {
+          const scopes = decodedToken.scope.split(' ');
+          console.log("scopes: ", scopes);
+          if(scopes.includes('ROLE_ADMIN')){
+            document.getElementById('myUser').style.display = 'block';
+          }
+          if (scopes.includes('ROLE_ADMIN') || scopes.includes('ROLE_USER')) {
+            document.getElementById('createBlogButton').style.display = 'block';
+            document.getElementById('myInfoButton').style.display = 'block';
+            document.getElementById('myBlogButton').style.display = 'block';
+          }
+          document.getElementById('loginButton').style.display = 'none';
+        }
+      }
+    }
+
+    window.onload = function() {
+      checkTokenScopes();
+      fetchBlogs();
+    };
+  </script>
+
+  <script>
+    // href="/myBlog/updateBlog/${title}
+    document.getElementById("titleBtn").addEventListener("click", async function(event) {
+      event.preventDefault(); // Ngăn chuyển hướng mặc định
+
+      const title = encodeURIComponent(this.textContent); // Lấy tiêu đề từ nội dung của thẻ
+
+      try {
+        const response = await fetch(`http://localhost:8080/myBlog/updateBlog/${title}`,{
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+        const apiResponse = await response.json();
+        console.log('API Response:', apiResponse);
+        if (apiResponse.result) {
+          renderBlogs(apiResponse.result);
+        } else {
+          console.error('Blog not found');
+          document.getElementById('blogDetails').innerHTML = '<p>Blog not found</p>';
+        }
+      } catch (error) {
+        console.error('Error fetching blog details:', error);
+        document.getElementById('blogDetails').innerHTML = '<p>There was an error. Please try again later.</p>';
+      }
+    });
+  </script>
+

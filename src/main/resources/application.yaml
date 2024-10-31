@@ -1,0 +1,40 @@
+server:
+  port: 8080
+#  servlet:
+#    context-path: /blog
+#
+#file:
+#  uploadDir: /home/kieuhieu2/Desktop/blog/ImageBlog
+
+spring:
+  datasource:
+    url: ${DBMS_CONNECTION:jdbc:mysql://localhost:3306/blog}
+    driverClassName: "com.mysql.cj.jdbc.Driver"
+    password: ${DBMS_PASSWORD:root}
+    username: ${DBMS_USERNAME:root}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+  thymeleaf:
+    prefix: classpath:/templates/
+    suffix: .html
+
+#  web:
+#    resources:
+##      static-locations: file:/home/kieuhieu2/Desktop/blog/ImageBlog
+#  servlet:
+#    multipart:
+#      enabled: true
+#      max-file-size: 10MB
+#      max-request-size: 10MB
+
+jwt:
+  signerKey: "1TjXchw5FloESb63Kc+DFhTARvpWL4jUGCwfGWxuG5SIf/1y/LgJxHnMqaF6A/ij"
+  valid-duration: 3600 # in second
+  refreshable-duration: 36000 # in seconds
+
+
+
+

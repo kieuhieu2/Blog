@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Update User Info</title>
+</head>
+<body>
+<div class="container">
+    <div class="update-user-page">
+        <div class="update-user-page-main">
+            <h2 class='mt-2 mb-4'>Cập nhật thông tin người dùng</h2>
+            <form id="updateUserForm">
+                <div>
+                    <label for="username">Tên đăng nhập</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+                <div>
+                    <label style="padding-right: 41px" for="password">Mật khẩu</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                <div>
+                    <label style="padding-right: 79px" for="firstName">Tên</label>
+                    <input type="text" id="firstName" name="firstName" required>
+                </div>
+                <div>
+                    <label style="padding-right: 86px" for="lastName">Họ</label>
+                    <input type="text" id="lastName" name="lastName" required>
+                </div>
+                <div>
+                    <label style="padding-right: 34px" for="dob">Ngày sinh</label>
+                    <input type="date" id="dob" name="dob" required>
+                </div>
+                <div>
+                    <label style="padding-right: 60px" for="roles">Vai trò</label>
+                    <input type="text" id="roles" name="roles" required>
+                </div>
+                <div>
+                    <button type="submit" class="btn btn-primary update-user-btn">Cập nhật</button>
+                </div>
+                <div id="error-message" style="color: red;"></div>
+                <div id="success-message" style="color: green;"></div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Function to fetch user info from the API and populate the form
+    async function fetchUserInfo() {
+        try {
+            const response = await fetch('http://localhost:8080/users/my-info', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Error fetching user info:', response.status, errorText);
+                throw new Error('Network response was not ok');
+            }
+
+            const apiResponse = await response.json();
+            console.log('API Response:', apiResponse);
+
+            if (!apiResponse.result) {
+                throw new Error('API response does not contain result');
+            }
+
+            const user = apiResponse.result;
+            document.getElementById('username').value = user.username;
+            document.getElementById('firstName').value = user.firstName;
+            document.getElementById('lastName').value = user.lastName;
+            document.getElementById('dob').value = user.dob;
+            document.getElementById('roles').value = user.roles.map(role => role.name).join(', '); // Map roles to a comma-separated string
+
+            // Save the userId from the API response
+            const userId = user.id;
+            localStorage.setItem('userId', userId);
+        } catch (error) {
+            console.error('Error fetching user info:', error);
+            document.getElementById('error-message').textContent = 'Error loading user info. Please try again later.';
+        }
+    }
+
+    // Function to handle form submission and call the update API
+    document.getElementById('updateUserForm').addEventListener('submit', async function(event) {
+        event.preventDefault();
+
+        const token = localStorage.getItem('token');
+        const userId = localStorage.getItem('userId'); // Retrieve userId from localStorage
+
+        const formData = {
+            password: document.getElementById('password').value,
+            firstName: document.getElementById('firstName').value,
+            lastName: document.getElementById('lastName').value,
+            dob: document.getElementById('dob').value,
+            roles: document.getElementById('roles').value.split(',').map(role => role.trim())
+        };
+
+        try {
+            const response = await fetch(`http://localhost:8080/users/${userId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(formData)
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Error updating user info:', response.status, errorText);
+                document.getElementById('error-message').textContent = 'Error updating user info. Please try again later.';
+                throw new Error('Network response was not ok');
+            }
+
+            const apiResponse = await response.json();
+            console.log('API Response:', apiResponse);
+
+            document.getElementById('success-message').textContent = 'User info updated successfully!';
+            document.getElementById('error-message').textContent = '';
+
+        } catch (error) {
+            console.error('Error updating user info:', error);
+            document.getElementById('error-message').textContent = 'Error updating user info. Please try again later.';
+            document.getElementById('success-message').textContent = '';
+        }
+    });
+
+    // Fetch user info when the page loads
+    window.onload = function() {
+        fetchUserInfo();
+    };
+</script>
+
+<script>
+    // Hàm giải mã token JWT
+    function parseJwt(token) {
+        try {
+            const base64Url = token.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+            return JSON.parse(jsonPayload);
+        } catch (e) {
+            return null;
+        }
+    }
+
+    // Kiểm tra quyền của token và hiển thị các nút tương ứng
+    function checkTokenScopes() {
+        const token = sessionStorage.getItem('token') || localStorage.getItem('token'); // Lấy token từ session hoặc local
+        console.log("token: ", token);
+        if (token) {
+            const decodedToken = parseJwt(token);
+            console.log("decodedToken: ", decodedToken);
+            if (decodedToken && decodedToken.scope) {
+                const scopes = decodedToken.scope.split(' ');
+                console.log("scopes: ", scopes);
+                if(scopes.includes('ROLE_ADMIN')){
+                    document.getElementById('myUser').style.display = 'block';
+                }
+                // Hiển thị nút "Tạo blog" nếu user có vai trò USER hoặc ADMIN
+                if (scopes.includes('ROLE_ADMIN') || scopes.includes('ROLE_USER')) {
+                    document.getElementById('createBlogButton').style.display = 'block';
+                    document.getElementById('myInfoButton').style.display = 'block';
+                    document.getElementById('myBlogButton').style.display = 'block'; // Nếu cần hiển thị thêm nút khác
+                }
+                // Ẩn nút đăng nhập
+                document.getElementById('loginButton').style.display = 'none';
+            }
+        }
+    }
+
+    // Kiểm tra trạng thái khi tải trang
+    window.onload = function() {
+        checkTokenScopes();
+        fetchUserInfo();
+    };
+</script>
+</body>
+</html>
